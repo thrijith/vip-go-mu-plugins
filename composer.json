@@ -1,4 +1,15 @@
 {
+    "require": {
+        "aws/aws-sdk-php": "3.231"
+    },
+    "scripts": {
+        "pre-autoload-dump": "Aws\\Script\\Composer\\Composer::removeUnusedServices"
+    },
+    "extra": {
+        "aws/aws-sdk-php": [
+            "S3"
+        ]
+    },
     "require-dev": {
         "phpunit/phpunit": "9.5.21",
         "automattic/vipwpcs": "2.3.3",

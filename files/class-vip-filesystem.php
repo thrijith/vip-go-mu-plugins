@@ -43,10 +43,16 @@ class VIP_Filesystem {
 	 */
 	protected $stream_wrapper;
 
+	protected $backend;
+
 	/**
 	 * Vip_Filesystem constructor.
 	 */
 	public function __construct() {
+		if ( true ) {
+			$this->backend = 's3';
+		}
+
 		if ( defined( 'VIP_FILESYSTEM_VERSION' ) ) {
 			$this->version = VIP_FILESYSTEM_VERSION;
 		} else {
@@ -64,6 +70,10 @@ class VIP_Filesystem {
 	 * @access  private
 	 */
 	private function load_dependencies() {
+		if ( $this->backend === 's3' ) {
+			require dirname( __DIR__ ) . '/vendor/autoload.php';
+			return;
+		}
 
 		/**
 		 * The class representing the VIP Files stream
@@ -79,9 +89,18 @@ class VIP_Filesystem {
 	public function run() {
 		$this->add_filters();
 
+		if ( $this->backend === 's3' ) {
+			$aws_client = new \Aws\S3\S3Client( [
+				'version' => 'latest',
+				'region' => 'us-east-1',
+			] );
+
+			\Aws\S3\StreamWrapper::register( $aws_client, self::PROTOCOL );
+			return;
+		}
+
 		// Create and register stream
-		$this->stream_wrapper = new VIP_Filesystem_Stream_Wrapper( new_api_client(),
-		self::PROTOCOL );
+		$this->stream_wrapper = new VIP_Filesystem_Stream_Wrapper( new_api_client(), self::PROTOCOL );
 		$this->stream_wrapper->register();
 	}
 

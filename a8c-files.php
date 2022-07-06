@@ -74,7 +74,7 @@ class A8C_Files {
 			return 1073741824; // 2^30
 		});
 
-		if ( defined( 'VIP_FILESYSTEM_USE_STREAM_WRAPPER' ) && true === VIP_FILESYSTEM_USE_STREAM_WRAPPER ) {
+		if ( true || ( defined( 'VIP_FILESYSTEM_USE_STREAM_WRAPPER' ) && true === VIP_FILESYSTEM_USE_STREAM_WRAPPER ) ) {
 			$this->init_vip_filesystem();
 		}
 
@@ -662,7 +662,7 @@ function a8c_files_maybe_inject_image_sizes( $data, $attachment_id ) {
 	return $data;
 }
 
-if ( defined( 'FILES_CLIENT_SITE_ID' ) && defined( 'FILES_ACCESS_TOKEN' ) ) {
+if ( true || ( defined( 'FILES_CLIENT_SITE_ID' ) && defined( 'FILES_ACCESS_TOKEN' ) ) ) {
 	// Kick things off
 	a8c_files_init();
 
