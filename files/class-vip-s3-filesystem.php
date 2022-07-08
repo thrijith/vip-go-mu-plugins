@@ -94,6 +94,55 @@ class VIP_S3_Filesystem extends VIP_Filesystem {
 
 		$this->add_filters();
 
+		add_filter( 'wp_get_attachment_image_src', function ( $image, $attachment_id, $size, $icon ) {
+			// point this at the CDN or something
+			return $image;
+		}, 10, 4 );
+
+		add_filter( 'wp_get_attachment_url', function ( $url, $attachment_id ) {
+			return add_query_arg( [
+				'action' => 'vip_get_image_blob',
+				'attachment_id' => $attachment_id,
+			], admin_url( 'admin-ajax.php' ) );
+		}, 10, 2 );
+
+		add_action( 'wp_ajax_vip_get_image_blob', function () {
+			if ( $_SERVER['REQUEST_METHOD'] !== 'GET' ) {
+				status_header( 403 );
+				wp_send_json_error( [ 'error' => 'bad_method' ] );
+			}
+
+			if ( empty( $_GET['attachment_id'] ) ) {
+				status_header( 500 );
+				wp_send_json_error( [ 'error' => 'missing_id' ] );
+			}
+
+			if ( ! ctype_digit( $_GET['attachment_id'] ) ) {
+				status_header( 500 );
+				wp_send_json_error( [ 'error' => 'bad_id' ] );
+			}
+
+			$attachment_id = (int) $_GET['attachment_id'];
+
+			if ( ! \current_user_can( 'read', $attachment_id ) ) {
+				status_header( 403 );
+				wp_send_json_error( [ 'error' => 'no_access' ] );
+			}
+
+			$path = get_attached_file( $attachment_id );
+			$fp = fopen( $path, 'rb' );
+
+			$mime_type = mime_content_type( $path );
+			$attachment_metadata = wp_get_attachment_metadata( $attachment_id );
+
+			// TODO: lots of validation
+
+			header( 'Content-Type: ' . $mime_type );
+			header( 'Content-Length: ' . $attachment_metadata['filesize'] );
+			fpassthru( $fp );
+			wp_die();
+		} );
+
 		$credentials = new \Aws\Credentials\Credentials( AWS_STREAM_WRAPPER_S3_AKI, AWS_STREAM_WRAPPER_S3_SAK );
 
 		$aws_client = new \Aws\S3\S3Client( [
