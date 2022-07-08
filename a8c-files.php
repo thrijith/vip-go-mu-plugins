@@ -25,11 +25,19 @@ if ( ! defined( 'WP_RUN_CORE_TESTS' ) || ! WP_RUN_CORE_TESTS ) {
 	define( 'ALLOW_UNFILTERED_UPLOADS', false );
 }
 
+require_once __DIR__ . '/vendor/autoload.php';
+
+if ( ! defined( 'DOING_AJAX' ) || $_REQUEST['action'] !== 'heartbeat' ) {
+	error_log( 'loaded aws sdk for: ' . add_query_arg( $_REQUEST ) );//$_SERVER['REQUEST_URI'] . '?' . add_query_arg( $_REQUEST ) );
+}
+
 require_once __DIR__ . '/files/class-path-utils.php';
 
 require_once __DIR__ . '/files/init-filesystem.php';
 
 require_once __DIR__ . '/files/class-vip-filesystem.php';
+
+require_once __DIR__ . '/files/class-vip-s3-filesystem.php';
 
 require_once __DIR__ . '/files/acl/acl.php';
 
@@ -39,6 +47,7 @@ require_once __DIR__ . '/files/acl/acl.php';
 require_once __DIR__ . '/files/class-meta-updater.php';
 
 use Automattic\VIP\Files\VIP_Filesystem;
+use Automattic\VIP\Files\VIP_S3_Filesystem;
 use Automattic\VIP\Files\Meta_Updater;
 use Automattic\VIP\Utils\Alerts;
 
@@ -106,7 +115,7 @@ class A8C_Files {
 	 * Initializes and wires up Stream Wrapper plugin.
 	 */
 	private function init_vip_filesystem() {
-		$vip_filesystem = new VIP_Filesystem();
+		$vip_filesystem = true ? new VIP_S3_Filesystem() : new VIP_Filesystem();
 		$vip_filesystem->run();
 	}
 
