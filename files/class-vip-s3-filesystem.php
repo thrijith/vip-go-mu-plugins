@@ -130,7 +130,6 @@ class VIP_S3_Filesystem extends VIP_Filesystem {
 			}
 
 			$path = get_attached_file( $attachment_id );
-			$fp = fopen( $path, 'rb' );
 
 			$mime_type = mime_content_type( $path );
 			$attachment_metadata = wp_get_attachment_metadata( $attachment_id );
@@ -139,7 +138,10 @@ class VIP_S3_Filesystem extends VIP_Filesystem {
 
 			header( 'Content-Type: ' . $mime_type );
 			header( 'Content-Length: ' . $attachment_metadata['filesize'] );
-			fpassthru( $fp );
+
+			// Stream the file to the client
+			readfile( $path );
+
 			wp_die();
 		} );
 
