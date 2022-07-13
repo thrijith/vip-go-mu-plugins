@@ -25,6 +25,7 @@ function vip_dashboard_init() {
 	// Loading components
 	require_once 'components/header.php';
 	require_once 'components/widget-welcome.php';
+	require_once 'components/widget-helpcenter.php';
 	require_once 'components/widget-contact.php';
 
 	// Enable menu for all sites using a VIP and a8c sites.
@@ -65,6 +66,7 @@ function vip_dashboard_page() {
 
 		<div class="widgets-area">
 			<?php render_vip_dashboard_widget_welcome(); ?>
+			<?php render_vip_dashboard_widget_helpcenter(); ?>
 			<?php render_vip_dashboard_widget_contact(); ?>
 		</div>
 	</main>
