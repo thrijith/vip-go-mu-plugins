@@ -63,9 +63,9 @@ function render_vip_dashboard_widget_helpcenter() {
 
 					resultItemLink.setAttribute( 'href', encodeURI( article.html_url ) );
 					resultItemLink.setAttribute( 'target', '_blank' );
-					resultItemLink.innerText( article.title );
+					resultItemLink.innerText = article.title;
 
-					resutItem.appendChild( resultItemLink );
+					resultItem.appendChild( resultItemLink );
 					resultList.appendChild( resultItem );
 				}
 			} else {
