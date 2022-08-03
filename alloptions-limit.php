@@ -25,8 +25,7 @@ function run_alloptions_safeguard() {
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		return;
 	}
-	//update_option('vlv2', bin2hex(openssl_random_pseudo_bytes(900000)), 'yes');
-    //update_option('vlv3', bin2hex(openssl_random_pseudo_bytes(900000)), 'yes');
+
 	// Uncompressed size thresholds.
 	// Warn should *always* be =< die
 	$alloptions_size_warn = MB_IN_BYTES * 2.5;
@@ -46,12 +45,7 @@ function run_alloptions_safeguard() {
 
 	$warning        = $alloptions_size > $alloptions_size_warn;
 	$maybe_blocked  = $alloptions_size > $alloptions_size_die;
-	$really_blocked = false; 
-
-	/** Set these 3 to true for testing. REMOVE BEFORE MERGING!!!!!!!!!!!!!!!!!! */
-	$warning = true;
-	$maybe_blocked = true;
-	$really_blocked = true;
+	$really_blocked = false;
 
 	$alloptions_size_compressed = 0;
 
