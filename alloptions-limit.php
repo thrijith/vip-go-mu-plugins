@@ -13,7 +13,6 @@ use Automattic\VIP\Utils\Alerts;
 require_once __DIR__ . '/lib/utils/class-alerts.php';
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\run_alloptions_safeguard' );
-//add_filter( 'pre_cache_alloptions', __NAMESPACE__ . '\run_alloptions_safeguard' );
 
 define( 'VIP_ALLOPTIONS_ERROR_THRESHOLD', 1000000 );
 define( 'VIP_ALLOPTIONS_PRUNED', 'vip_alloptions_pruned' );
