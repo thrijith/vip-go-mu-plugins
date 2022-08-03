@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: VIP AllOptions Safeguard
- * Description: Provides warnings and notifications for wp_options exceeding limits.
+ * Description: Provides warnings and notifications for wp_options exceeding limits. Attempts autofix by removing big options from alloptions object.
  * Author: Automattic
  * License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
@@ -13,8 +13,10 @@ use Automattic\VIP\Utils\Alerts;
 require_once __DIR__ . '/lib/utils/class-alerts.php';
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\run_alloptions_safeguard' );
+//add_filter( 'pre_cache_alloptions', __NAMESPACE__ . '\run_alloptions_safeguard' );
 
 define( 'VIP_ALLOPTIONS_ERROR_THRESHOLD', 1000000 );
+define( 'VIP_ALLOPTIONS_PRUNED', 'vip_alloptions_pruned' );
 
 /**
  * The purpose of this limit is to safe-guard against a barrage of requests with cache sets for values that are too large.
@@ -24,7 +26,8 @@ function run_alloptions_safeguard() {
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		return;
 	}
-
+	//update_option('vlv2', bin2hex(openssl_random_pseudo_bytes(900000)), 'yes');
+    //update_option('vlv3', bin2hex(openssl_random_pseudo_bytes(900000)), 'yes');
 	// Uncompressed size thresholds.
 	// Warn should *always* be =< die
 	$alloptions_size_warn = MB_IN_BYTES * 2.5;
@@ -44,7 +47,12 @@ function run_alloptions_safeguard() {
 
 	$warning        = $alloptions_size > $alloptions_size_warn;
 	$maybe_blocked  = $alloptions_size > $alloptions_size_die;
-	$really_blocked = false;
+	$really_blocked = false; 
+
+	/** Set these 3 to true for testing. REMOVE BEFORE MERGING!!!!!!!!!!!!!!!!!! */
+	$warning = true;
+	$maybe_blocked = true;
+	$really_blocked = true;
 
 	$alloptions_size_compressed = 0;
 
@@ -68,14 +76,86 @@ function run_alloptions_safeguard() {
 		$really_blocked = true;
 	}
 
-	// NOTE - This function has built-in rate limiting so it's ok to call on every request
-	alloptions_safeguard_notify( $alloptions_size, $alloptions_size_compressed, $really_blocked );
-
-	// Will exit with a 503
+	// Attempt autohealing
 	if ( $really_blocked ) {
-		alloptions_safeguard_die();
+		$alloptions = wp_load_alloptions();
+		$alloptions_size_excess = $alloptions_size_compressed - VIP_ALLOPTIONS_ERROR_THRESHOLD;
+		$pruned_options = alloptions_prune($alloptions, $alloptions_size_excess);
+
+		$pruned_option_names = array(); //TO-DO
+		update_option(VIP_ALLOPTIONS_PRUNED, $pruned_option_names, false);
 	}
+
+	// NOTE - This function has built-in rate limiting so it's ok to call on every request
+	//alloptions_safeguard_notify( $alloptions_size, $alloptions_size_compressed, $really_blocked );
 }
+
+function alloptions_prune( $alloptions, $alloptions_size_excess ) {
+	$allowed_options = alloptions_get_allowed_options();
+	$options_to_prune = alloptions_get_options_to_prune( $alloptions, $allowed_options, $alloptions_size_excess );
+	$pruned_options = array();
+	
+	foreach($options_to_prune as $key => $option){
+		$pruned = alloptions_disable_autoload( $option ); // Force autoload parameter to 'no'
+		if( $pruned ){
+			$pruned_options[] = $option;
+		}
+	}
+	return $pruned_options;
+}
+
+function alloptions_disable_autoload( $option ){
+	global $wpdb;
+	$update_args = array(
+		'option_value' => maybe_serialize( $option->value ),
+		'autoload' => 'no',
+	);
+	$pruned = $wpdb->update( $wpdb->options, $update_args, array( 'option_name' => $option->name ) );
+
+	return $pruned;
+}
+
+function alloptions_get_options_to_prune( $alloptions, $allowed_options, $alloptions_size_excess ){	
+	$options_to_prune = array();
+	$uncompressed_size_excess = $alloptions_size_excess * 4;
+	$total_size = 0;
+	foreach ( $alloptions as $name => $val ) {
+		$size        = mb_strlen( $val );
+
+		// Skip small options, we prune only big options.
+		// There is no good way to automatically decide which options to exclude when all of them are small. 
+		if ( $size < 500 || in_array( $name, $allowed_options ) ) {
+			continue;
+		}
+
+		$option = new \stdClass();
+
+		$option->name = $name;
+		$option->value = $val;
+		$option->size = $size;
+
+		$options_to_prune[] = $option;
+		
+		$total_size += $size;
+		if( $total_size > $uncompressed_size_excess ){
+			break;
+		}
+	}
+
+	// sort by size
+	usort( $options_to_prune, function( $arr1, $arr2 ) {
+		if ( $arr1->size === $arr2->size ) {
+			return 0;
+		}
+
+		return ( $arr1->size < $arr2->size ) ? -1 : 1;
+	});
+
+	$options_to_prune = array_reverse( $options_to_prune );
+
+	return $options_to_prune;
+}
+
 
 /**
  * Show error page and exit
@@ -175,4 +255,74 @@ function alloptions_safeguard_notify( $size, $size_compressed = 0, $really_block
 		'10'
 	);
 
+}
+
+function alloptions_get_allowed_options(){
+	$alloptions_default_allowed_options = array(
+		'active_sitewide_plugins',
+		'rewrite_rules',
+		'wp_user_roles',
+		'cron',
+		'widget_block',
+		'redirection_options',
+		'active_plugins',
+		'siteurl',
+		'home',
+		'blogname',
+		'blogdescription',
+		'gmt_offset',
+		'date_format',
+		'time_format',
+		'start_of_week',
+		'timezone_string',
+		'WPLANG',
+		'new_admin_email',
+		'default_pingback_flag',
+		'default_ping_status',
+		'default_comment_status',
+		'comments_notify',
+		'moderation_notify',
+		'comment_moderation',
+		'require_name_email',
+		'comment_previously_approved',
+		'comment_max_links',
+		'moderation_keys',
+		'disallowed_keys',
+		'show_avatars',
+		'avatar_rating',
+		'avatar_default',
+		'close_comments_for_old_posts',
+		'close_comments_days_old',
+		'thread_comments',
+		'thread_comments_depth',
+		'page_comments',
+		'comments_per_page',
+		'default_comments_page',
+		'comment_order',
+		'comment_registration',
+		'show_comments_cookies_opt_in',
+		'thumbnail_size_w',
+		'thumbnail_size_h',
+		'thumbnail_crop',
+		'medium_size_w',
+		'medium_size_h',
+		'large_size_w',
+		'large_size_h',
+		'image_default_size',
+		'image_default_align',
+		'image_default_link_type',
+		'posts_per_page',
+		'posts_per_rss',
+		'rss_use_excerpt',
+		'show_on_front',
+		'page_on_front',
+		'page_for_posts',
+		'blog_public',
+		'default_category',
+		'default_email_category',
+		'default_link_category',
+		'default_post_format',
+	);
+
+	return apply_filters('vip_alloptions_default_allowed_options', $alloptions_default_allowed_options);
 }
