@@ -13,12 +13,14 @@
     "prepare": "husky install",
     "setup-e2e-env": "./__tests__/e2e/bin/setup-env.sh",
     "destroy-e2e-env": "vip dev-env destroy --slug=e2e-test-site",
-    "test-e2e": "cd __tests__/e2e/ && playwright test -c 'playwright.config.ts'"
+    "test-e2e": "cd __tests__/e2e/ && playwright test -c 'playwright.config.ts'",
+    "instrument-e2e": "datadog-ci junit upload --service vip-go-mu-plugins __tests__/e2e/e2eResults.xml"
   },
   "author": "Automattic",
   "devDependencies": {
     "@automattic/eslint-plugin-wpvip": "^0.3.0",
     "@babel/plugin-syntax-decorators": "^7.18.6",
+    "@datadog/datadog-ci": "^1.13.3",
     "@playwright/test": "1.25.1",
     "asana-phrase": "0.0.8",
     "eslint": "^8.15.0",
@@ -29,5 +31,8 @@
     "playwright": "1.25.1",
     "prettier": "^2.6.2",
     "typescript": "^4.6.2"
+  },
+  "dependencies": {
+    "dd-trace": "^3.0.0"
   }
 }

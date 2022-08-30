@@ -7,7 +7,7 @@ const config: PlaywrightTestConfig = {
     retries: 1,
     globalSetup: require.resolve( './lib/global-setup' ),
     timeout: 120000,
-    reporter: process.env.CI ? 'github' : 'list',
+    reporter: process.env.CI ? [ [ 'github' ], [ 'junit', { outputFile: 'e2eResults.xml' } ] ] : 'list',
     reportSlowTests: null,
     workers: 4,
     use: {

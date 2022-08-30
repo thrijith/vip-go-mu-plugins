@@ -1,6 +1,9 @@
 name: Run e2e tests
 on:
-  pull_request:
+  push:
+    branches-ignore:
+      - develop
+      - staging
   workflow_dispatch:
     inputs:
       wpversion:
@@ -106,6 +109,11 @@ jobs:
       - name: Run e2e tests
         run: npm run test-e2e
         working-directory: vip-go-mu-plugins
+      
+      - name: Run e2e instrumentation
+        env:
+          DATADOG_KEY: ${{ secrets.DATADOG_API_KEY }}
+        run: DD_ENV=ci DATADOG_API_KEY=$DATADOG_KEY DATADOG_SITE=datadoghq.com npm run instrument-e2e 
 
       - name: Archive test results
         uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
