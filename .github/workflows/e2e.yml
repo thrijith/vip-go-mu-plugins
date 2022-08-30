@@ -136,14 +136,14 @@ jobs:
             vip-go-mu-plugins/screenshots
 
       - name: Analyze Test and/or Coverage Results
-      env:
-        FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
-      working-directory: vip-go-mu-plugins
-      uses: runforesight/foresight-test-kit-action@v1
-      if: success() || failure()
-      with:
-        api_key: $FORESIGHT_KEY
-        test_format: JUNIT
-        test_framework: JEST
-        test_path: "./__tests__/e2e/"
-        coverage_format: JACOCO/XML
+        working-directory: vip-go-mu-plugins
+        env:
+          FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
+        uses: runforesight/foresight-test-kit-action@v1
+        if: success() || failure()
+        with:
+          api_key: $FORESIGHT_KEY
+          test_format: JUNIT
+          test_framework: JEST
+          test_path: "./__tests__/e2e/"
+          coverage_format: JACOCO/XML
