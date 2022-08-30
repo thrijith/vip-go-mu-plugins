@@ -135,7 +135,7 @@ jobs:
             vip-go-mu-plugins/test-results
             vip-go-mu-plugins/screenshots
 
-    - name: Analyze Test and/or Coverage Results
+      - name: Analyze Test and/or Coverage Results
       env:
         FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
       working-directory: vip-go-mu-plugins
