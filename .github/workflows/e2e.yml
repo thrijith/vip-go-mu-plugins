@@ -136,10 +136,10 @@ jobs:
             vip-go-mu-plugins/screenshots
 
       - name: Analyze Test and/or Coverage Results
+        uses: runforesight/foresight-test-kit-action@v1
         working-directory: vip-go-mu-plugins
         env:
           FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
-        uses: runforesight/foresight-test-kit-action@v1
         if: success() || failure()
         with:
           api_key: $FORESIGHT_KEY
