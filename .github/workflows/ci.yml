@@ -2,10 +2,9 @@ name: CI
 
 on:
   push:
-    branches-ignore:
+    branches:
       - develop
       - staging
-      - add/test-instrumentation-datadog
   workflow_dispatch:
 
 concurrency:
