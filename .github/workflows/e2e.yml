@@ -38,6 +38,7 @@ jobs:
         if: success() || failure()
         with:
           api_key: $FORESIGHT_KEY
+      
       - name: Harden Runner
         uses: step-security/harden-runner@dd2c410b088af7c0dc8046f3ac9a8f4148492a95 # tag=v1.4.5
         with:
@@ -72,6 +73,8 @@ jobs:
             dns.google:53
             e2e-test-site.vipdev.lndo.site:80
             cireport-intake.datadoghq.com
+            foresight.service.thundra.io
+      
       - name: Check out repository code
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # tag=v3.0.2
         with:
@@ -131,3 +134,16 @@ jobs:
           path: |
             vip-go-mu-plugins/test-results
             vip-go-mu-plugins/screenshots
+
+    - name: Analyze Test and/or Coverage Results
+      env:
+        FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
+      working-directory: vip-go-mu-plugins
+      uses: runforesight/foresight-test-kit-action@v1
+      if: success() || failure()
+      with:
+        api_key: $FORESIGHT_KEY
+        test_format: JUNIT
+        test_framework: JEST
+        test_path: "./__tests__/e2e/"
+        coverage_format: JACOCO/XML
