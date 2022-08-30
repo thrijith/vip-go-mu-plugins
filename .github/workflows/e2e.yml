@@ -137,7 +137,6 @@ jobs:
 
       - name: Analyze Test and/or Coverage Results
         uses: runforesight/foresight-test-kit-action@v1
-        working-directory: vip-go-mu-plugins
         env:
           FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
         if: success() || failure()
@@ -147,3 +146,4 @@ jobs:
           test_framework: JEST
           test_path: "./__tests__/e2e/"
           coverage_format: JACOCO/XML
+        working-directory: vip-go-mu-plugins
