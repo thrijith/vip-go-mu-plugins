@@ -126,15 +126,6 @@ jobs:
         run: DD_ENV=ci DATADOG_API_KEY=$DATADOG_KEY DATADOG_SITE=datadoghq.com npm run instrument-e2e 
         working-directory: vip-go-mu-plugins
 
-      - name: Archive test results
-        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
-        if: failure()
-        with:
-          name: test-results
-          path: |
-            vip-go-mu-plugins/test-results
-            vip-go-mu-plugins/screenshots
-
       - name: Analyze Test and/or Coverage Results
         uses: runforesight/foresight-test-kit-action@v1
         env:
@@ -144,4 +135,13 @@ jobs:
           api_key: $FORESIGHT_KEY
           test_format: JUNIT
           test_framework: JEST
-          test_path: ./__tests__/e2e
+          test_path: __tests__/e2e
+
+      - name: Archive test results
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
+        if: failure()
+        with:
+          name: test-results
+          path: |
+            vip-go-mu-plugins/test-results
+            vip-go-mu-plugins/screenshots
