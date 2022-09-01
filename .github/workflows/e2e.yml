@@ -31,14 +31,6 @@ jobs:
     name: Run E2E Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Collect Workflow Telemetry
-        env:
-          FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
-        uses: runforesight/foresight-workflow-kit-action@v1
-        if: success() || failure()
-        with:
-          api_key: $FORESIGHT_KEY
-      
       - name: Harden Runner
         uses: step-security/harden-runner@dd2c410b088af7c0dc8046f3ac9a8f4148492a95 # tag=v1.4.5
         with:
@@ -125,17 +117,6 @@ jobs:
           DATADOG_KEY: ${{ secrets.DATADOG_API_KEY }}
         run: DD_ENV=ci DATADOG_API_KEY=$DATADOG_KEY DATADOG_SITE=datadoghq.com npm run instrument-e2e 
         working-directory: vip-go-mu-plugins
-
-      - name: Analyze Test and/or Coverage Results
-        uses: runforesight/foresight-test-kit-action@v1
-        env:
-          FORESIGHT_KEY: ${{ secrets.FORESIGHT_API_KEY }}
-        if: success() || failure()
-        with:
-          api_key: $FORESIGHT_KEY
-          test_format: JUNIT
-          test_framework: JEST
-          test_path: __tests__/e2e
 
       - name: Archive test results
         uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
