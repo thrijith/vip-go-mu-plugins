@@ -14,7 +14,7 @@
     "setup-e2e-env": "./__tests__/e2e/bin/setup-env.sh",
     "destroy-e2e-env": "vip dev-env destroy --slug=e2e-test-site",
     "test-e2e": "cd __tests__/e2e/ && playwright test -c 'playwright.config.ts'",
-    "instrument-e2e": "datadog-ci junit upload --service vip-go-mu-plugins __tests__/e2e/e2eResults.xml"
+    "instrument-e2e": "datadog-ci junit upload --service vip-go-mu-plugins __tests__/e2e/e2eTestResults.xml"
   },
   "author": "Automattic",
   "devDependencies": {
