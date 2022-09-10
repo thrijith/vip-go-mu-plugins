@@ -71,6 +71,7 @@ jobs:
             e2e-test-site.vipdev.lndo.site:80
             cireport-intake.datadoghq.com
             foresight.service.thundra.io
+            api.service.runforesight.com
             playwright-akamai.azureedge.net:443
             playwright-verizon.azureedge.net:443
             playwright.azureedge.net:443
