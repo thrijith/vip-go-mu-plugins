@@ -30,6 +30,9 @@ jobs:
   Run_e2e_tests:
     name: Run E2E Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vip-go-mu-plugins
     steps:
       - name: Collect Workflow Telemetry
         uses: runforesight/foresight-workflow-kit-action@v1
@@ -132,7 +135,6 @@ jobs:
       
       - name: Run e2e FRS instrumentation
         if: success() || failure()
-        run: pwd
         uses: thundra-io/foresight-test-kit-action@v1
         with:
           api_key: ${{ secrets.FORESIGHT_API_KEY }}
