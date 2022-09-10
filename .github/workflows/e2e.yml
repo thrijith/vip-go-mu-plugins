@@ -134,7 +134,7 @@ jobs:
         if: success() || failure()
         uses: thundra-io/foresight-test-kit-action@v1
         with:
-          api_key: ${{ secrets.FRS_PROD_API_KEY }}
+          api_key: ${{ secrets.FORESIGHT_API_KEY }}
           test_format: JUNIT
           test_framework: JEST
           test_path: __tests__/e2e/e2eTestResults.xml
