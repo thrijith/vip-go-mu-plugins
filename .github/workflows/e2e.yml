@@ -137,7 +137,7 @@ jobs:
           api_key: ${{ secrets.FORESIGHT_API_KEY }}
           test_format: JUNIT
           test_framework: JEST
-          test_path: __tests__/e2e/e2eTestResults.xml
+          test_path: vip-go-mu-plugins/__tests__/e2e/e2eTestResults.xml
 
       - name: Run e2e instrumentation
         env:
