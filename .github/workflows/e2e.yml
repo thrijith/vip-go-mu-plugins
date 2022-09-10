@@ -130,6 +130,15 @@ jobs:
         run: npm run test-e2e
         working-directory: vip-go-mu-plugins
       
+      - name: Run e2e FRS instrumentation
+        if: success() || failure()
+        uses: thundra-io/foresight-test-kit-action@v1
+        with:
+          api_key: ${{ secrets.FRS_PROD_API_KEY }}
+          test_format: JUNIT
+          test_framework: JEST
+          test_path: __tests__/e2e/e2eTestResults.xml
+
       - name: Run e2e instrumentation
         env:
           DATADOG_KEY: ${{ secrets.DATADOG_API_KEY }}
