@@ -141,7 +141,7 @@ jobs:
           test_format: JUNIT
           test_framework: JEST
           test_path: __tests__/e2e/e2eTestResults.xml
-          working-directory: vip-go-mu-plugins
+          working_directory: vip-go-mu-plugins
 
       - name: Run e2e instrumentation
         env:
