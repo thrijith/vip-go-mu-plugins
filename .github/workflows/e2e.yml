@@ -84,6 +84,7 @@ jobs:
             azure.archive.ubuntu.com:443
             packages.microsoft.com:443
             upload.service.runforesight.com
+            foresight-cli-test-artifact-prod.s3-accelerate.amazonaws.com
 
       - name: Check out repository code
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # tag=v3.0.2
