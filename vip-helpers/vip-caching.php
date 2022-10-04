@@ -360,18 +360,23 @@ function wpcom_vip_old_slug_redirect() {
  * count_user_posts is generally fast, but it can be easy to end up with many redundant queries
  * if it's called several times per request. This allows bypassing the db queries in favor of
  * the cache
+ *
+ * @param int          $user_id     User ID.
+ * @param array|string $post_type   Optional. Single post type or array of post types to count the number of posts for. Default 'post'.
+ * @param bool         $public_only Optional. Whether to only return counts for public posts. Default false.
+ * @return string Number of posts the user has written in this post type.
  */
-function wpcom_vip_count_user_posts( $user_id ) {
+function wpcom_vip_count_user_posts( $user_id, $post_type = 'post', $public_only = false ) {
 	if ( ! is_numeric( $user_id ) ) {
 		return 0;
 	}
 
-	$cache_key   = 'vip_' . (int) $user_id;
+	$cache_key   = 'vip_' . md5( wp_json_encode( $post_type ) ) . '_' . (int) $user_id;
 	$cache_group = 'user_posts_count';
-	
+
 	$count = wp_cache_get( $cache_key, $cache_group );
 	if ( false === $count ) {
-		$count = count_user_posts( $user_id );
+		$count = count_user_posts( $user_id, $post_type, $public_only );
 
 		wp_cache_set( $cache_key, $count, $cache_group, 5 * MINUTE_IN_SECONDS );
 	}
@@ -510,32 +515,30 @@ function wpcom_vip_get_adjacent_post( $in_same_term = false, $excluded_terms = '
 	$join              = '';
 	$where             = '';
 	$current_post_date = $post->post_date;
-	
+
 	/** @var string[] */
 	$excluded_terms = empty( $excluded_terms ) ? [] : explode( ',', $excluded_terms );
 
-	if ( $in_same_term ) {
-		if ( is_object_in_taxonomy( $post->post_type, $taxonomy ) ) {
-			$term_array = get_the_terms( $post->ID, $taxonomy );
-			if ( ! empty( $term_array ) && ! is_wp_error( $term_array ) ) {
-				$term_array_ids = wp_list_pluck( $term_array, 'term_id' );
-				// Remove any exclusions from the term array to include.
-				if ( ! empty( $excluded_terms ) ) {
-					$term_array_ids = array_diff( $term_array_ids, $excluded_terms );
-				}
-				if ( ! empty( $term_array_ids ) ) {
-					$term_array_ids    = array_map( 'intval', $term_array_ids );
-					$term_id_to_search = array_pop( $term_array_ids ); // only allow for a single term to be used. picked pseudo randomly
-				} else {
-					$term_id_to_search = false;
-				}
+	if ( $in_same_term && is_object_in_taxonomy( $post->post_type, $taxonomy ) ) {
+		$term_array = get_the_terms( $post->ID, $taxonomy );
+		if ( ! empty( $term_array ) && ! is_wp_error( $term_array ) ) {
+			$term_array_ids = wp_list_pluck( $term_array, 'term_id' );
+			// Remove any exclusions from the term array to include.
+			if ( ! empty( $excluded_terms ) ) {
+				$term_array_ids = array_diff( $term_array_ids, $excluded_terms );
+			}
+			if ( ! empty( $term_array_ids ) ) {
+				$term_array_ids    = array_map( 'intval', $term_array_ids );
+				$term_id_to_search = array_pop( $term_array_ids ); // only allow for a single term to be used. picked pseudo randomly
+			} else {
+				$term_id_to_search = false;
+			}
 
-				$term_id_to_search = apply_filters( 'wpcom_vip_limit_adjacent_post_term_id', $term_id_to_search, $term_array_ids, $excluded_terms, $taxonomy, $previous );
+			$term_id_to_search = apply_filters( 'wpcom_vip_limit_adjacent_post_term_id', $term_id_to_search, $term_array_ids, $excluded_terms, $taxonomy, $previous );
 
-				if ( ! empty( $term_id_to_search ) ) {  // allow filters to short circuit by returning a empty like value
-					$join  = " INNER JOIN $wpdb->term_relationships AS tr ON p.ID = tr.object_id INNER JOIN $wpdb->term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id"; // Only join if we are sure there is a term
-					$where = $wpdb->prepare( 'AND tt.taxonomy = %s AND tt.term_id IN (%d)  ', $taxonomy, $term_id_to_search ); //
-				}
+			if ( ! empty( $term_id_to_search ) ) {  // allow filters to short circuit by returning a empty like value
+				$join  = " INNER JOIN $wpdb->term_relationships AS tr ON p.ID = tr.object_id INNER JOIN $wpdb->term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id"; // Only join if we are sure there is a term
+				$where = $wpdb->prepare( 'AND tt.taxonomy = %s AND tt.term_id IN (%d)  ', $taxonomy, $term_id_to_search ); //
 			}
 		}
 	}
@@ -657,7 +660,6 @@ function wpcom_vip_wp_old_slug_redirect() {
 		} elseif ( 'not_found' === $redirect ) {
 			// wpcom_vip_set_old_slug_redirect_cache() will cache 'not_found' when a url is not found so we don't keep hammering the database
 			remove_action( 'template_redirect', 'wp_old_slug_redirect' );
-			return;
 		} else {
 			/** This filter is documented in wp-includes/query.php. */
 			$redirect = apply_filters( 'old_slug_redirect_url', $redirect );

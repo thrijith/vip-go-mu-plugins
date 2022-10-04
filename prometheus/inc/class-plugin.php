@@ -32,13 +32,15 @@ class Plugin {
 	 * @codeCoverageIgnore -- invoked before the tests start
 	 */
 	protected function __construct() {
-		add_action( 'vipgo_mu_plugins_loaded', [ $this, 'init_registry' ], 9 );
+		add_action( 'vip_mu_plugins_loaded', [ $this, 'init_registry' ], 9 );
 
-		add_action( 'vipgo_mu_plugins_loaded', [ $this, 'load_collectors' ] );
+		add_action( 'vip_mu_plugins_loaded', [ $this, 'load_collectors' ] );
 		add_action( 'mu_plugins_loaded', [ $this, 'load_collectors' ] );
 		add_action( 'plugins_loaded', [ $this, 'load_collectors' ] );
 
 		add_action( 'init', [ $this, 'init' ] );
+
+		do_action( 'vip_prometheus_loaded' );
 	}
 
 	public function init_registry() {
@@ -78,16 +80,26 @@ class Plugin {
 	 * @return string[]
 	 */
 	public function query_vars( $vars ): array {
+		if ( ! is_array( $vars ) ) {
+			$vars = [];
+		}
+
 		$vars[] = 'metrics';
 		return $vars;
 	}
 
-	public function request( array $query_vars ): array {
+	public function request( $query_vars ): array {
+		if ( ! is_array( $query_vars ) ) {
+			$query_vars = [];
+		}
+
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the value is used only for strict comparison
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
 		if ( '/metrics' === $request_uri && is_proxied_request() ) {
 			$query_vars['metrics'] = true;
 			unset( $query_vars['error'] );
+
+			add_filter( 'pre_handle_404', [ $this, 'pre_handle_404' ], 10, 2 );
 		}
 
 		return $query_vars;
@@ -104,6 +116,11 @@ class Plugin {
 		}
 
 		return $headers;
+	}
+
+	public function pre_handle_404( $_result, WP_Query $query ): bool {
+		unset( $query->query_vars['error'] );
+		return true;
 	}
 
 	/**

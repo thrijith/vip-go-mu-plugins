@@ -8,6 +8,9 @@
 
 // Note: This file is prefixed with `z-` for load order
 
+// This file is loaded before the code coverage driver is initialized; no coverage info can be generated
+// @codeCoverageIgnoreStart
+
 /**
  * Gets PHP files in the client-mu-plugins folder.
  *
@@ -112,7 +115,12 @@ function wpcom_vip_filter_client_mu_plugins_url( $url, $url_path, $plugin_path )
 }
 add_filter( 'plugins_url', 'wpcom_vip_filter_client_mu_plugins_url', 10, 3 );
 
-do_action( 'vipgo_mu_plugins_loaded' );
+do_action( 'vip_mu_plugins_loaded' );
+
+if ( defined( 'WP_TESTS_TABLE_PREFIX' ) && PHP_VERSION_ID >= 80100 ) {
+	// phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
+	error_reporting( E_ALL & ~( E_DEPRECATED | E_USER_DEPRECATED ) );
+}
 
 if ( wpcom_vip_should_load_plugins() ) {
 	// Let's load the plugins
@@ -121,3 +129,5 @@ if ( wpcom_vip_should_load_plugins() ) {
 	}
 	unset( $client_mu_plugin );
 }
+
+// @codeCoverageIgnoreEnd

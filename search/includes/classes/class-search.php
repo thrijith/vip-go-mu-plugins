@@ -143,6 +143,7 @@ class Search {
 
 	private static $query_count_ttl;
 
+	private const DEFAULT_SEARCH_LENGTH          = 80;
 	private const MAX_SEARCH_LENGTH              = 255;
 	private const DISABLE_POST_META_ALLOW_LIST   = array();
 	private const STALE_QUEUE_WAIT_LIMIT         = 3600; // 1 hour in seconds
@@ -202,6 +203,7 @@ class Search {
 	 * Initialize the VIP Search plugin
 	 */
 	public function init() {
+		$this->setup_collector();
 		$this->apply_settings(); // Applies filters for tweakable Search settings and should run first.
 		$this->setup_constants();
 		$this->maybe_enable_ep_query_logging();
@@ -647,6 +649,9 @@ class Search {
 		add_filter( 'blog_option_ep_indexable', [ $this, 'filter__blog_option_ep_indexable' ], PHP_INT_MAX, 2 );
 
 		add_filter( 'ep_enable_do_weighting', [ $this, 'filter__ep_enable_do_weighting' ], 9999, 4 );
+
+		add_action( 'publish_ep-pointer', [ $this, 'set_custom_results_existence_cache' ], PHP_INT_MAX, 3 );
+		add_action( 'trash_ep-pointer', [ $this, 'set_custom_results_existence_cache' ], PHP_INT_MAX, 3 );
 	}
 
 	protected function load_commands() {
@@ -943,6 +948,7 @@ class Search {
 		$duration = ( $end_time - $start_time ) * 1000;
 
 		$this->maybe_increment_stat( $statsd_prefix . '.total' );
+		Prometheus_Collector::increment_query_counter( $args['method'] ?? 'post', $query['url'] );
 
 		$response_code = (int) wp_remote_retrieve_response_code( $response );
 
@@ -950,7 +956,7 @@ class Search {
 		 * If request resulted in an error flag it as such but try to return the fallback value if available.
 		 */
 		if ( is_wp_error( $response ) || $response_code >= 400 ) {
-			$this->ep_handle_failed_request( $request, $response, $query, $statsd_prefix, $type, $cached_response );
+			$this->ep_handle_failed_request( $request, $response, $query, $statsd_prefix, $type, $cached_response, $args['method'] ?? 'post' );
 			if ( isset( $cached_response['response'] ) ) {
 				return $cached_response['response'];
 			}
@@ -961,12 +967,15 @@ class Search {
 
 			if ( $response_body && isset( $response_body['took'] ) && is_int( $response_body['took'] ) ) {
 				$this->maybe_send_timing_stat( $statsd_prefix . '.engine', $response_body['took'] );
+				Prometheus_Collector::observe_request_time( $args['method'] ?? 'post', $query['url'], Prometheus_Collector::OBSERVATION_TYPE_ENGINE, (float) $response_body['took'] );
 			}
 			$this->maybe_send_timing_stat( $statsd_prefix . '.total', $duration );
+			Prometheus_Collector::observe_request_time( $args['method'] ?? 'post', $query['url'], Prometheus_Collector::OBSERVATION_TYPE_REQUEST, (float) $duration );
 
 			if ( $collect_per_doc_metric && $response_body && isset( $response_body['items'] ) && is_array( $response_body['items'] ) ) {
 				$doc_count = count( $response_body['items'] );
 				$this->maybe_send_timing_stat( $statsd_prefix . '.per_doc', $duration / $doc_count );
+				Prometheus_Collector::observe_request_time( $args['method'] ?? 'post', $query['url'], Prometheus_Collector::OBSERVATION_TYPE_PER_DOC, (float) $duration / $doc_count );
 			}
 
 			$response_headers = wp_remote_retrieve_headers( $response );
@@ -1052,9 +1061,10 @@ class Search {
 	 * @param string $statsd_prefix
 	 * @param string $type
 	 * @param mixed $cached_request
+	 * @param string $query_method
 	 * @return void
 	 */
-	public function ep_handle_failed_request( $request, $response, $query, $statsd_prefix, $type, $cached_request = null ) {
+	public function ep_handle_failed_request( $request, $response, $query, $statsd_prefix, $type, $cached_request, $query_method ) {
 		// Not real failed requests, we should not be logging.
 		$skiplist = [
 			'index_exists',
@@ -1081,9 +1091,11 @@ class Search {
 			$response_failure_code = $response->get_error_code();
 
 			foreach ( $error_messages as $error_message ) {
-				$stat = $this->is_curl_timeout( $error_message ) ? '.timeout' : '.error';
+				$stat   = $this->is_curl_timeout( $error_message ) ? '.timeout' : '.error';
+				$reason = $this->is_curl_timeout( $error_message ) ? Prometheus_Collector::QUERY_FAILED_TIMEOUT : Prometheus_Collector::QUERY_FAILED_ERROR;
 
 				$this->maybe_increment_stat( $statsd_prefix . $stat );
+				Prometheus_Collector::increment_failed_query_counter( $query_method, $query['url'], $reason );
 			}
 
 			$error_message = implode( ';', $error_messages );
@@ -1101,6 +1113,7 @@ class Search {
 			}
 
 			$this->maybe_increment_stat( $statsd_prefix . '.error' );
+			Prometheus_Collector::increment_failed_query_counter( $query_method, $query['url'] ?? '', Prometheus_Collector::QUERY_FAILED_ERROR );
 
 			$error_type = 'search_query_error';
 		}
@@ -1311,6 +1324,7 @@ class Search {
 		$stat = $this->get_statsd_prefix( $url, $statsd_mode );
 
 		$this->maybe_increment_stat( $stat );
+		Prometheus_Collector::increment_ratelimited_query_counter( is_wp_error( $url ) ? 'unknown' : $url );
 	}
 
 	public function maybe_alert_for_average_queue_time() {
@@ -1556,9 +1570,8 @@ class Search {
 		}
 
 		// Force the timeout for post search queries.
-		$is_rolled_out  = ( defined( 'VIP_GO_APP_ENVIRONMENT' ) && 'production' !== VIP_GO_APP_ENVIRONMENT ) || \Automattic\VIP\Feature::is_enabled_by_percentage( 'force-es-timeout' );
 		$global_timeout = defined( 'WP_CLI' ) && WP_CLI ? self::GLOBAL_QUERY_TIMEOUT_CLI_SEC : self::GLOBAL_QUERY_TIMEOUT_WEB_SEC;
-		if ( ! isset( $formatted_args['timeout'] ) && apply_filters( 'vip_search_force_global_timeout', $is_rolled_out ) ) {
+		if ( ! isset( $formatted_args['timeout'] ) && apply_filters( 'vip_search_force_global_timeout', true ) ) {
 			$formatted_args['timeout'] = sprintf( '%ds', $global_timeout );
 		}
 
@@ -1760,7 +1773,13 @@ class Search {
 		if ( $query->is_search() ) {
 			$search = $query->get( 's' );
 
-			$truncated_search = substr( $search, 0, self::MAX_SEARCH_LENGTH );
+			$search_length = ! current_user_can( 'edit_posts' ) ? apply_filters( 'vip_search_char_length', self::DEFAULT_SEARCH_LENGTH ) : self::MAX_SEARCH_LENGTH;
+
+			if ( $search_length > self::MAX_SEARCH_LENGTH ) {
+				$search_length = self::MAX_SEARCH_LENGTH;
+			}
+
+			$truncated_search = substr( $search, 0, $search_length );
 
 			$query->set( 's', $truncated_search );
 		}
@@ -2352,14 +2371,21 @@ class Search {
 	 * @return bool $should_do_weighting New value on whether to enable weight config
 	 */
 	public function filter__ep_enable_do_weighting( $should_do_weighting, $weight_config, $args, $formatted_args ) {
-		if ( defined( 'VIP_GO_APP_ENVIRONMENT' ) && 'production' === constant( 'VIP_GO_APP_ENVIRONMENT' ) &&
-		! \Automattic\VIP\Feature::is_enabled_by_percentage( 'reduce-default-es-payload' ) ) {
-			// Rollout to non-prod and 25% of production
+		if ( ! empty( $weight_config ) ) {
 			return $should_do_weighting;
 		}
 
-		if ( ! empty( $weight_config ) ) {
-			return true;
+		$search_ordering_feature = \ElasticPress\Features::factory()->get_registered_feature( 'searchordering' );
+		if ( $search_ordering_feature && $search_ordering_feature->is_active() ) {
+			if ( '1' === $this->get_cached_custom_results_existence() ) {
+				// If Custom Search Results are enabled and exist, we should bail.
+				return $should_do_weighting;
+			}
+
+			if ( isset( $args['exclude_pointers'] ) && true === $args['exclude_pointers'] ) {
+				// For the pointer preview, the search should display with weightings for accuracy.
+				return $should_do_weighting;
+			}
 		}
 
 		global $wp_filter;
@@ -2376,11 +2402,11 @@ class Search {
 				foreach ( $wp_filter[ $ep_filter ]->callbacks as $callback ) {
 					foreach ( $callback as $el ) {
 						if ( $el['function'] instanceof \Closure ) {
-							return true;
+							return $should_do_weighting;
 						} else {
 							$class = get_class( $el['function'][0] );
 							if ( false === strpos( $class, 'ElasticPress\Feature' ) ) {
-								return true;
+								return $should_do_weighting;
 							}
 						}
 					}
@@ -2389,6 +2415,67 @@ class Search {
 		}
 
 		return false;
+	}
+
+	/**
+	 * This is used to toggle the option that stores the existence of custom search results.
+	 * Hooks onto {$new_status}_ep-pointer.
+	 *
+	 * @param int $post_id Post ID.
+	 * @param WP_Post $post Post object.
+	 * @param string $old_status Old post status.
+	 */
+	public function set_custom_results_existence_cache( $post_id, $post, $old_status = '' ) {
+		$custom_results_existence = $this->get_cached_custom_results_existence();
+		$option_cache_key         = 'vip_custom_results_existence';
+
+		if ( 'publish' === $post->post_status && '1' !== $custom_results_existence ) {
+			// Only set it to 1 if it's not already 1.
+			update_option( $option_cache_key, '1' );
+		} elseif ( 'trash' === $post->post_status && '1' === $custom_results_existence ) {
+			// If it's trashed, we need to query if there are any more CSRs left and if the option is 1.
+			$custom_results = $this->is_custom_results_exist();
+			if ( ! $custom_results ) {
+				update_option( $option_cache_key, '0' );
+			}
+		}
+	}
+
+	/**
+	 * Return the option that caches the existence of custom search results. If the option does not exist,
+	 * backfill it.
+	 *
+	 * @return string $custom_results_existence String boolean of whether custom search results exist.
+	 */
+	public function get_cached_custom_results_existence() {
+		$option_cache_key         = 'vip_custom_results_existence';
+		$custom_results_existence = get_option( $option_cache_key );
+
+		if ( false === $custom_results_existence ) {
+			$custom_results_existence = $this->is_custom_results_exist() ? '1' : '0';
+			update_option( $option_cache_key, $custom_results_existence );
+		}
+
+		return $custom_results_existence;
+	}
+
+	/**
+	 * Perform a WP_Query lookup to see if Custom Search Results are present.
+	 *
+	 * @return bool $exist If there are any Custom Search Results or not.
+	 */
+	public function is_custom_results_exist() {
+		$args           = [
+			'post_type'           => 'ep-pointer',
+			'post_status'         => 'publish',
+			'fields'              => 'ids',
+			'posts_per_page'      => 1,
+			'no_found_rows'       => true,
+			'ignore_sticky_posts' => true,
+		];
+		$custom_results = new \WP_Query( $args );
+
+		return ! empty( $custom_results->posts );
 	}
 
 	/**
@@ -2403,5 +2490,18 @@ class Search {
 	public function filter__blog_option_ep_indexable( $value, $blog_id ) {
 		$index_exists = \ElasticPress\Indexables::factory()->get( 'post' )->index_exists( $blog_id );
 		return false === $index_exists ? 'no' : 'yes';
+	}
+
+	public function setup_collector(): void {
+		if ( did_action( 'vip_prometheus_loaded' ) ) {
+			$this->load_collector();
+		} else {
+			add_action( 'vip_prometheus_loaded', [ $this, 'load_collector' ] );
+		}
+	}
+
+	public function load_collector(): void {
+		require_once __DIR__ . '/class-prometheus-collector.php';
+		Prometheus_Collector::get_instance();
 	}
 }

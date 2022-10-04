@@ -17,10 +17,7 @@ class Feature {
 	 *
 	 * @var array
 	 */
-	public static $feature_percentages = [
-		'reduce-default-es-payload' => 0.5,
-		'force-es-timeout'          => 0.5,
-	];
+	public static $feature_percentages = [];
 
 	/**
 	 * Holds feature slug and then, key of ids with bool value to enable E.g.

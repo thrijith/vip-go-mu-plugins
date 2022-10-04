@@ -57,7 +57,7 @@ runs:
         fi
 
     - name: Set up PHP
-      uses: shivammathur/setup-php@2.19.1
+      uses: shivammathur/setup-php@2.21.2
       with:
         coverage: ${{ steps.coverage.outputs.coverage }}
         ini-values: ${{ steps.coverage.outputs.ini }}
@@ -76,7 +76,7 @@ runs:
       uses: ramsey/composer-install@2.1.0
 
     - name: Set up WordPress and WordPress Test Library
-      uses: sjinks/setup-wordpress-test-library@1.1.4
+      uses: sjinks/setup-wordpress-test-library@1.1.7
       with:
         version: ${{ inputs.wordpress }}
 
@@ -101,6 +101,10 @@ runs:
         done
         mysqladmin ping -h "${{ inputs.mysql-host }}" -P ${{ inputs.mysql-port }} --silent
 
+    - name: Fix wp-tests-config.php
+      shell: bash
+      run: sed -i "s@define( 'WP_DEBUG', true );@// define( 'WP_DEBUG', true );@" /tmp/wordpress-tests-lib/wp-tests-config.php
+
     - name: Run tests
       shell: bash
       run: |
@@ -112,11 +116,13 @@ runs:
         OPTIONS=
         if [ "${{ steps.coverage.outputs.coverage }}" != 'none' ]; then
           OPTIONS="${OPTIONS} --coverage-clover=clover.xml"
+        else
+          OPTIONS="${OPTIONS} --order-by=random"
         fi
-        "${PHPUNIT}" --order-by=random ${OPTIONS}
+        "${PHPUNIT}" ${OPTIONS}
 
     - name: Upload coverage report
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v3.1.0
       with:
         files: ${{ inputs.coverage-file }}
         flags: ${{ inputs.coverage-flags }}

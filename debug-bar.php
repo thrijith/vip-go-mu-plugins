@@ -23,14 +23,16 @@ add_filter( 'debug_bar_enable', function( $enable ) {
 }, PHP_INT_MAX );
 
 // We only need to load the files if it's enabled
-add_action( 'init', function() {
+add_action( 'set_current_user', function() {
 	$enable = apply_filters( 'debug_bar_enable', false );
 
 	if ( ! $enable ) {
 		return;
 	}
 
-	require_once __DIR__ . '/debug-bar/debug-bar.php';
+	if ( ! class_exists( 'Debug_Bar' ) ) {
+		require_once __DIR__ . '/debug-bar/debug-bar.php';
+	}
 
 	// Load additional plugins
 	if ( ! class_exists( 'ZT_Debug_Bar_Cron' ) ) {
