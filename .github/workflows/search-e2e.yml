@@ -8,6 +8,7 @@ on:
       - develop
       - production
       - staging
+      - test_ep
   pull_request:
     branches:
       - develop
