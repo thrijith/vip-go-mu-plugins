@@ -8,6 +8,7 @@ on:
       - develop
       - production
       - staging
+      - update/search-e2e-optimisations-hooks
   pull_request:
     branches:
       - develop
@@ -23,8 +24,8 @@ permissions:
   contents: read
 
 jobs:
-  cypress_local:
-    name: Cypress - Local
+  cypress_local_1:
+    name: Cypress - Local - 1
     runs-on: ubuntu-latest
 
     steps:
@@ -61,7 +62,74 @@ jobs:
       run: npm run cypress:setup
 
     - name: Test
-      run: npm run cypress:run
+      run: npm run cypress:run -- --env grepTags=@slow
+
+    - name: Merge E2E test reports
+      run: npm run cypress:combine:reports
+
+    - name: Instrument Tests in ForeSight
+      if: success() || failure()
+      uses: thundra-io/foresight-test-kit-action@v1
+      with:
+        api_key: ${{secrets.FORESIGHT_API_KEY}}
+        test_format: JUNIT
+        test_framework: JEST
+        test_path: cypress/results/combined-cy-report.xml
+
+    - name: Make artifacts available
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-artifact
+        retention-days: 2
+        path: |
+          ${{ github.workspace }}/tests/cypress/screenshots/
+          ${{ github.workspace }}/tests/cypress/videos/
+          ${{ github.workspace }}/tests/cypress/logs/
+          ${{ github.workspace }}/cypress/results/
+    - name: Stop Elasticsearch
+      if: always()
+      run: cd bin/search/es-docker/ && docker-compose down
+
+  cypress_local_2:
+    name: Cypress - Local - 2
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Prepare source code
+      uses: ./.github/actions/prepare-source
+
+    - name: "Install node v${{ env.NODE_VERSION }}"
+      uses: actions/setup-node@v3.5.1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: npm
+
+    - name: Instrument workflow processes for Search E2E tests
+      uses: runforesight/foresight-workflow-kit-action@v1
+      if: success() || failure()
+      with:
+        api_key: ${{secrets.FORESIGHT_API_KEY}}
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Set up WP environment with Elasticsearch
+      run: npm run search-env:start
+
+    - name: Build asset
+      run: npm run search-build
+
+    - name: Set up database
+      run: npm run cypress:setup
+
+    - name: Test
+      run: npm run cypress:run -- --env grepTags=-@slow
 
     - name: Merge E2E test reports
       run: npm run cypress:combine:reports

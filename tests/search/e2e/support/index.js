@@ -18,6 +18,10 @@ import './assertions';
 import './commands';
 import './global-hooks';
 
+// Import cypress grep
+import registerCypressGrep from '@cypress/grep';
+registerCypressGrep();
+
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 

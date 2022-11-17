@@ -1,4 +1,4 @@
-describe('Post Search Feature - Synonyms Functionality', () => {
+describe('Post Search Feature - Synonyms Functionality',{ tags: '@slow' }, () => {
 	const word1 = 'authenticity';
 	const word2 = 'credibility';
 

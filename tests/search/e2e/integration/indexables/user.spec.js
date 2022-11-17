@@ -1,4 +1,4 @@
-describe('User Indexable', () => {
+describe('User Indexable', { tags: '@slow' }, () => {
 	function createUser(userData) {
 		const newUserData = {
 			userLogin: 'testuser',
