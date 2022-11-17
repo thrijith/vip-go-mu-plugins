@@ -1,4 +1,4 @@
-describe('Related Posts Feature',{ tags: '@slow' }, () => {
+describe('Related Posts Feature',{ tags: '@groupOne' }, () => {
 	/**
 	 * Ensure the feature is active and ensure Classic Widgets is installed
 	 * before running tests.

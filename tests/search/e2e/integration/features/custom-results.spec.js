@@ -1,4 +1,4 @@
-describe('Custom Results', () => {
+describe('Custom Results', { tags: '@groupTwo' }, () => {
 	const testPost = 'test-post';
 
 	before(() => {

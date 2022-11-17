@@ -1,6 +1,6 @@
 /* global indexNames */
 
-describe('WP-CLI Commands', () => {
+describe('WP-CLI Commands', { tags: '@groupTwo' }, () => {
 	context('wp vip-search index', () => {
 		it('Can index all the posts of the current blog', () => {
 			cy.wpCli('wp vip-search index')

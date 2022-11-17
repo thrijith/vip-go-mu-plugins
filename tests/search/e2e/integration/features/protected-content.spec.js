@@ -1,4 +1,4 @@
-describe('Protected Content Feature',{ tags: '@slow' }, () => {
+describe('Protected Content Feature',{ tags: '@groupTwo' }, () => {
 	before(() => {
 		cy.maybeEnableFeature('protected_content');
 		cy.wpCli('vip-search index --setup --skip-confirm');

@@ -1,4 +1,4 @@
-describe('Terms Feature',  { tags: '@slow' }, () => {
+describe('Terms Feature',  { tags: '@groupOne' }, () => {
 	const tags = ['Far From Home', 'No Way Home', 'The Most Fun Thing'];
 
 	before(() => {
