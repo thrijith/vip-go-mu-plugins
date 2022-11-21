@@ -65,7 +65,7 @@ jobs:
       run: npm run cypress:setup
 
     - name: Test
-      run: npm run cypress:run -- --env grepTags={{ matrix.testGroup }}
+      run: npm run cypress:run -- --env grepTags=${{ matrix.testGroup }}
 
     - name: Merge E2E test reports
       run: npm run cypress:combine:reports
