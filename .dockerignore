@@ -6,6 +6,7 @@
 .circleci
 .codeclimate.yml
 .coveralls.yml
+.devcontainer
 .distignore
 .editorconfig
 .eslines.json

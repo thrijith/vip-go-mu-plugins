@@ -1,0 +1,32 @@
+{
+	"name": "vip-go-mu-plugins",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dlech.chmod",
+				"dbaeumer.vscode-eslint",
+				"bmewburn.vscode-intelephense-client",
+				"wongjn.php-sniffer",
+				"esbenp.prettier-vscode",
+				"MehediDracula.php-namespace-resolver",
+				"johnbillion.vscode-wordpress-hooks"
+			]
+		}
+	},
+	"image": "mcr.microsoft.com/devcontainers/php:8",
+	"containerUser": "vscode",
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "os-provided"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		}
+	},
+	"onCreateCommand": "sudo rm -f /usr/local/etc/php/conf.d/xdebug.ini",
+	"updateContentCommand": {
+		"submodules": "git submodule update --init --recursive",
+		"php-deps": "composer install",
+		"node-deps-root": "npm i"
+	}
+}
