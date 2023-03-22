@@ -29,10 +29,11 @@ const SUPPORTED_VERSIONS = [
  */
 final class Parsely_Loader_Info {
 	// Describes how the parse.ly plugin is integrated/loaded.
-	const INTEGRATION_TYPE_MUPLUGINS        = 'MUPLUGINS';
-	const INTEGRATION_TYPE_MUPLUGINS_SILENT = 'MUPLUGINS_SILENT';
-	const INTEGRATION_TYPE_SELF_MANAGED     = 'SELF_MANAGED';
-	const INTEGRATION_TYPE_NONE             = 'NONE';
+	const INTEGRATION_TYPE_MUPLUGINS         = 'MUPLUGINS';
+	const INTEGRATION_TYPE_MUPLUGINS_SILENT  = 'MUPLUGINS_SILENT';
+	const INTEGRATION_TYPE_SELF_MANAGED      = 'SELF_MANAGED';
+	const INTEGRATION_TYPE_NONE              = 'NONE';
+	const INTEGRATION_TYPE_DISABLED_CONSTANT = 'MUPLUGINS_DISABLED_CONSTANT';
 
 	// Defaults for when detection was not possible.
 	const VERSION_UNKNOWN = 'UNKNOWN';
@@ -150,6 +151,14 @@ function maybe_load_plugin() {
 		if ( array_key_exists( 'plugin_version', $parsely_options ) ) {
 			Parsely_Loader_Info::set_version( $parsely_options['plugin_version'] );
 		}
+
+		return;
+	}
+
+	// Allow opting out via the VIP_PARSELY_SKIP_LOAD constant.
+	if ( defined( 'VIP_PARSELY_SKIP_LOAD' ) && true === VIP_PARSELY_SKIP_LOAD ) {
+		Parsely_Loader_Info::set_active( false );
+		Parsely_Loader_Info::set_integration_type( Parsely_Loader_Info::INTEGRATION_TYPE_DISABLED_CONSTANT );
 
 		return;
 	}
